@@ -52,4 +52,46 @@ contract("TokenFarm", ([owner, investor]) => {
       assert.equal(balance.toString(), tokens("1000000"));
     });
   });
+
+  describe("Farming tokens", async () => {
+    it("rewards users for staking", async () => {
+      let result;
+      result = await daiToken.balanceOf(investor);
+      assert.equal(result.toString(), tokens("100"), "investor has wrong starting balance");
+
+      await daiToken.approve(tokenFarm.address, tokens("20"), { from: investor });
+      await tokenFarm.stakeTokens(tokens("20"), { from: investor });
+
+      result = await daiToken.balanceOf(investor);
+      assert.equal(result.toString(), tokens("80"), "investor has wrong balance after staking");
+
+      result = await daiToken.balanceOf(tokenFarm.address);
+      assert.equal(result.toString(), tokens("20"), "token farm has wrong balance after staking");
+
+      result = await tokenFarm.stakingBalance(investor);
+      assert.equal(result.toString(), tokens("20"), "investor has wrong staking balance");
+
+      result = await tokenFarm.isStaking(investor);
+      assert.equal(result.toString(), "true", "staking status should be true for investor");
+
+      await tokenFarm.issueTokens({ from: owner });
+      result = await dappToken.balanceOf(investor);
+      assert.equal(result.toString(), tokens("20"), "investor should have 20 Dapp tokens");
+
+      await tokenFarm.issueTokens({ from: investor }).should.be.rejected;
+
+      await tokenFarm.unstakeTokens({ from: investor });
+      result = await daiToken.balanceOf(investor);
+      assert.equal(result.toString(), tokens("100"), "investor should have 100 DAI tokens");
+
+      result = await tokenFarm.stakingBalance(investor);
+      assert.equal(result.toString(), tokens("0"), "investor has wrong staking balance");
+
+      result = await daiToken.balanceOf(tokenFarm.address);
+      assert.equal(result.toString(), tokens("0"), "investor has wrong staking balance");
+
+      result = await tokenFarm.isStaking(investor);
+      assert.equal(result, false, "Investor's staking status should be false");
+    });
+  });
 });
